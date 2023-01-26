@@ -1,0 +1,57 @@
+version: "3.8"
+services:
+  elasticsearch:
+    image: elasticsearch:8.5.3
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx2048m"
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - target: 9200
+        published: 9200
+    networks:
+      - elastic
+
+  kibana:
+    image: kibana:8.5.3
+    environment:
+      - "ELASTICSEARCH_URL=http://elasticsearch:9200"
+      - "SERVER_NAME=127.0.0.1"
+    ports:
+      - target: 5601
+        published: 5601
+    depends_on:
+      - elasticsearch
+    networks:
+      - elastic
+
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - target: 8888
+        published: 8888
+    volumes:
+      - ./:/home/jovyan
+    depends_on:
+      - elasticsearch
+    networks:
+      - elastic
+    command: "start-notebook.sh --ip='*' --NotebookApp.token='' --NotebookApp.password=''"
+
+volumes:
+  es_data:
+    driver: local
+
+networks:
+  elastic:
+    name: elastic
+    driver: bridge
